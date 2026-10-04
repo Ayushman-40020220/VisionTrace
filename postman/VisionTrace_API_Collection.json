@@ -1,0 +1,207 @@
+{
+  "info": {
+    "name": "VisionTrace API Collection",
+    "description": "Multi-Modal Video Audit & Semantic Incident Search Engine REST API Contract",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "video_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "task_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication & RBAC",
+      "item": [
+        {
+          "name": "Register Admin User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@visiontrace.internal\",\n  \"password\": \"AdminSecurePassword123!\",\n  \"full_name\": \"Chief Security Officer\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Register Auditor User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"auditor@visiontrace.internal\",\n  \"password\": \"AuditorPassword123!\",\n  \"full_name\": \"Compliance Auditor\",\n  \"role\": \"AUDITOR\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login (Sets JWT Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "    pm.collectionVariables.set('jwt_token', json.token);",
+                  "    console.log('JWT Token stored successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@visiontrace.internal\",\n  \"password\": \"AdminSecurePassword123!\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "{{base_url}}/api/v1/auth/me", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Video Management & Ingestion",
+      "item": [
+        {
+          "name": "Upload Video & Queue AI Ingestion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.video && json.video.id) {",
+                  "    pm.collectionVariables.set('video_id', json.video.id);",
+                  "}",
+                  "if (json.task && json.task.task_id) {",
+                  "    pm.collectionVariables.set('task_id', json.task.task_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "video", "type": "file", "src": "" },
+                { "key": "title", "value": "CCTV Sector 4 Server Room Corridor", "type": "text" },
+                { "key": "incident_title", "value": "Restricted Area Breach Alert", "type": "text" },
+                { "key": "incident_notes", "value": "Unauthorized personnel spotted wearing black hoodie with backpack near rack 04.", "type": "text" },
+                { "key": "sample_interval_sec", "value": "1.0", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/api/v1/videos/upload", "host": ["{{base_url}}"], "path": ["api", "v1", "videos", "upload"] }
+          }
+        },
+        {
+          "name": "List All Videos",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "{{base_url}}/api/v1/videos", "host": ["{{base_url}}"], "path": ["api", "v1", "videos"] }
+          }
+        },
+        {
+          "name": "Get Video Ingestion Task Status (Redis)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "{{base_url}}/api/v1/videos/tasks/{{task_id}}", "host": ["{{base_url}}"], "path": ["api", "v1", "videos", "tasks", "{{task_id}}"] }
+          }
+        },
+        {
+          "name": "Get Video Telemetry (MongoDB)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "{{base_url}}/api/v1/videos/{{video_id}}/telemetry?limit=100", "host": ["{{base_url}}"], "path": ["api", "v1", "videos", "{{video_id}}", "telemetry"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Incident Records",
+      "item": [
+        {
+          "name": "Create Structured Incident",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"video_id\": \"{{video_id}}\",\n  \"title\": \"Security Perimeter Breach\",\n  \"description\": \"Individual with backpack identified tampering with server door lock\",\n  \"severity\": \"HIGH\",\n  \"timestamp_start_ms\": 12000,\n  \"timestamp_end_ms\": 28000,\n  \"tags\": [\"unauthorized_access\", \"server_room\", \"person\"]\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/incidents", "host": ["{{base_url}}"], "path": ["api", "v1", "incidents"] }
+          }
+        },
+        {
+          "name": "List All Incidents",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+            "url": { "raw": "{{base_url}}/api/v1/incidents?severity=HIGH", "host": ["{{base_url}}"], "path": ["api", "v1", "incidents"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Semantic Incident Search",
+      "item": [
+        {
+          "name": "Natural Language Semantic Query (FAISS + Redis Cache)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"person wearing backpack near door or server rack\",\n  \"top_k\": 10,\n  \"min_score\": 0.25,\n  \"video_id\": null\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/v1/search/semantic", "host": ["{{base_url}}"], "path": ["api", "v1", "search", "semantic"] }
+          }
+        }
+      ]
+    }
+  ]
+}

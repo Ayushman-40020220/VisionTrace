@@ -1,0 +1,183 @@
+version: "3.8"
+
+services:
+  # --------------------------------------------------------------------------
+  # 1. PostgreSQL (Structured Incident Records, RBAC Users, Video Catalog)
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: visiontrace-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${PG_DATABASE:-visiontrace}
+      POSTGRES_USER: ${PG_USER:-postgres}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-postgrespassword}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - visiontrace-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-postgres} -d ${PG_DATABASE:-visiontrace}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # --------------------------------------------------------------------------
+  # 2. MongoDB (Frame-by-Frame Detection Telemetry & Coordinates)
+  # --------------------------------------------------------------------------
+  mongo:
+    image: mongo:7.0
+    container_name: visiontrace-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ./database/mongo/init_indexes.js:/docker-entrypoint-initdb.d/init_indexes.js:ro
+    networks:
+      - visiontrace-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # --------------------------------------------------------------------------
+  # 3. Redis (Sub-10ms Semantic Query Cache & Async Ingestion Task Progress)
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: visiontrace-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - visiontrace-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # --------------------------------------------------------------------------
+  # 4. FastAPI AI Engine (OpenCV Sampling, YOLOv8, SentenceTransformers, FAISS)
+  # --------------------------------------------------------------------------
+  fastapi-ai-engine:
+    build:
+      context: ./services/ai-engine
+      dockerfile: Dockerfile
+    container_name: visiontrace-ai-engine
+    restart: always
+    environment:
+      ENV: production
+      AI_ENGINE_HOST: 0.0.0.0
+      AI_ENGINE_PORT: 8000
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-visiontrace}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_CACHE_TTL_SECONDS: 3600
+      YOLO_MODEL_PATH: yolov8n.pt
+      EMBEDDING_MODEL_NAME: all-MiniLM-L6-v2
+      FRAME_SAMPLE_INTERVAL_SECONDS: 1.0
+      YOLO_CONFIDENCE_THRESHOLD: 0.35
+      FAISS_INDEX_STORAGE_PATH: /app/data/faiss_index.bin
+      FAISS_METADATA_STORAGE_PATH: /app/data/faiss_metadata.json
+    ports:
+      - "8000:8000"
+    volumes:
+      - shared-uploads:/app/uploads
+      - faiss-storage:/app/data
+    networks:
+      - visiontrace-network
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # --------------------------------------------------------------------------
+  # 5. Node.js API Gateway (REST Ingress, JWT RBAC, Reverse Proxy Routing)
+  # --------------------------------------------------------------------------
+  node-api-gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: visiontrace-api-gateway
+    restart: always
+    environment:
+      GATEWAY_PORT: 5000
+      JWT_SECRET: ${JWT_SECRET:-visiontrace_jwt_super_secret_key_2026}
+      JWT_EXPIRES_IN: 8h
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DATABASE: ${PG_DATABASE:-visiontrace}
+      PG_USER: ${PG_USER:-postgres}
+      PG_PASSWORD: ${PG_PASSWORD:-postgrespassword}
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-visiontrace}
+      REDIS_URL: redis://redis:6379
+      REDIS_CACHE_TTL_SECONDS: 3600
+      AI_ENGINE_URL: http://fastapi-ai-engine:8000/internal/v1
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "5000:5000"
+    volumes:
+      - shared-uploads:/app/uploads
+    networks:
+      - visiontrace-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      fastapi-ai-engine:
+        condition: service_started
+
+  # --------------------------------------------------------------------------
+  # 6. React.js Frontend (Audit Dashboard & Video Scrubbing Interface)
+  # --------------------------------------------------------------------------
+  react-frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    container_name: visiontrace-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=http://localhost:5000/api/v1
+    networks:
+      - visiontrace-network
+    depends_on:
+      - node-api-gateway
+
+# ----------------------------------------------------------------------------
+# Networks & Volumes Specification
+# ----------------------------------------------------------------------------
+networks:
+  visiontrace-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  mongo-data:
+    driver: local
+  redis-data:
+    driver: local
+  shared-uploads:
+    driver: local
+  faiss-storage:
+    driver: local

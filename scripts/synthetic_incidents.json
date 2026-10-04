@@ -1,0 +1,46 @@
+[
+  {
+    "title": "Forklift Speed Violation & Perimeter Breach in Zone A",
+    "description": "Industrial forklift detected traveling in excess of authorized 8 km/h speed threshold in Cargo Loading Bay.",
+    "severity": "HIGH",
+    "timestamp_start_ms": 7000,
+    "timestamp_end_ms": 23000,
+    "tags": [
+      "forklift",
+      "loading_dock",
+      "speed_violation",
+      "zone_a"
+    ],
+    "target_label": "forklift"
+  },
+  {
+    "title": "Unauthorized Personnel with Cargo Bag Entering Server Vault",
+    "description": "Unregistered individual carrying a green backpack identified traversing into Zone B Secure Server Room without escort.",
+    "severity": "CRITICAL",
+    "timestamp_start_ms": 21000,
+    "timestamp_end_ms": 44000,
+    "tags": [
+      "person",
+      "backpack",
+      "restricted_access",
+      "server_vault",
+      "zone_b"
+    ],
+    "target_label": "person"
+  },
+  {
+    "title": "Vehicle Obstruction in Emergency Fire Lane",
+    "description": "Commercial delivery truck stationary within designated emergency egress lane in Zone C.",
+    "severity": "MEDIUM",
+    "timestamp_start_ms": 38000,
+    "timestamp_end_ms": 56000,
+    "tags": [
+      "vehicle",
+      "truck",
+      "emergency_lane",
+      "obstruction",
+      "zone_c"
+    ],
+    "target_label": "truck"
+  }
+]

@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-10-04T05:19:38Z",
+  "hardware_info": {
+    "python_version": "3.14.2",
+    "os": "win32"
+  },
+  "frame_pipeline": {
+    "frames_processed": 50,
+    "overall_fps": 26.01,
+    "yolo_detection": {
+      "count": 50,
+      "mean_ms": 22.26,
+      "median_p50_ms": 22.46,
+      "p90_ms": 24.36,
+      "p95_ms": 24.5,
+      "p99_ms": 25.78,
+      "min_ms": 18.99,
+      "max_ms": 25.78
+    },
+    "sentence_transformers_embedding": {
+      "count": 50,
+      "mean_ms": 16.14,
+      "median_p50_ms": 15.77,
+      "p90_ms": 18.73,
+      "p95_ms": 19.21,
+      "p99_ms": 19.82,
+      "min_ms": 12.8,
+      "max_ms": 19.82
+    },
+    "end_to_end_frame_pipeline": {
+      "count": 50,
+      "mean_ms": 38.44,
+      "median_p50_ms": 38.19,
+      "p90_ms": 41.48,
+      "p95_ms": 41.63,
+      "p99_ms": 42.9,
+      "min_ms": 33.05,
+      "max_ms": 42.9
+    }
+  },
+  "search_latency": {
+    "queries_executed": 500,
+    "cache_hit_rate": "100.0%",
+    "speedup_multiplier": "1517.0x",
+    "p95_speedup_multiplier": "1786.0x",
+    "cold_search_faiss": {
+      "count": 500,
+      "mean_ms": 15.17,
+      "median_p50_ms": 15.25,
+      "p90_ms": 17.55,
+      "p95_ms": 17.86,
+      "p99_ms": 18.43,
+      "min_ms": 10.97,
+      "max_ms": 18.86
+    },
+    "warm_search_redis": {
+      "count": 500,
+      "mean_ms": 0.0,
+      "median_p50_ms": 0.0,
+      "p90_ms": 0.0,
+      "p95_ms": 0.01,
+      "p99_ms": 0.01,
+      "min_ms": 0.0,
+      "max_ms": 0.08
+    }
+  }
+}
